@@ -93,16 +93,16 @@ def da_rnn(train_data: TrainData, n_targs: int, learning_rate=0.01, encoder_hidd
     encoder = Encoder(**encoder_kwargs).to(device)
 
 
-    with open(os.path.join("data", "enc_kwargs.json"), "w") as fi:
-        json.dump(encoder_kwargs, fi, indent=4)
+    with open(os.path.join("data", "enc_kwargs.json"), "w") as filename:
+        json.dump(encoder_kwargs, filename, indent=4)
 
     decoder_kwargs = {"encoder_hidden_size": encoder_hidden_size,
                   "decoder_hidden_size": decoder_hidden_size, "T": T, "out_feats": n_targs}
 
     decoder = Decoder(**decoder_kwargs).to(device)
 
-    with open(os.path.join("data", "dec_kwargs.json"), "w") as fi:
-        json.dump(decoder_kwargs, fi, indent=4)
+    with open(os.path.join("data", "dec_kwargs.json"), "w") as filename:
+        json.dump(decoder_kwargs, filename, indent=4)
 
     encoder_optimizer = optim.Adam(params=[p for p in encoder.parameters() if p.requires_grad],lr=learning_rate)
 
@@ -240,51 +240,55 @@ def predict(t_net: DaRnnNet, t_dat: TrainData, train_size: int, batch_size: int,
 
 
 #-----------------------------------------------Starts here----------------------------------------------------------------------------------
-save_plots = True
-debug = False
 
-raw_data = pd.read_csv(os.path.join("data", "nasdaq100_padding.csv"), nrows=100 if debug else None)
+if __name__ == "__main__":
 
-#print(raw_data.shape) #(40560, 82)
+    save_plots = True
+    debug = False
 
+    raw_data = pd.read_csv(os.path.join("data", "nasdaq100_padding.csv"), nrows=100 if debug else None)
 
-logger.info(f"Shape of data: {raw_data.shape}.\nTotal Missing Data Count: {raw_data.isnull().sum().sum()}.") #print shape and the number of missing data
-
-targ_cols = ("NDX",)#define a label
-
-#Data Preprocessing
-data, scaler = preprocess_data(raw_data, targ_cols)
-#got a tuple of (features = ndarray, labels = ndarray), parameters of the scaler
-#so data = (features = ndarray, labels = ndarray)
-
-da_rnn_kwargs = {"batch_size": 128, "T": 10} #we can pass any number of arguments here because we will be using **da_rnn_kwargs
-#create a dictionary for batch_size and time-steps in a sequence I suppose
-
-config, da_rnn_model = da_rnn(data, n_targs=len(targ_cols), learning_rate=0.001, **da_rnn_kwargs)
+    #print(raw_data.shape) #(40560, 82)
 
 
-iter_loss, epoch_loss = train(da_rnn_model, data, config, n_epochs=100, save_plots=save_plots)
-final_y_predictions = predict(da_rnn_model, data, config.train_size, config.batch_size, config.T)
+    logger.info(f"Shape of data: {raw_data.shape}.\nTotal Missing Data Count: {raw_data.isnull().sum().sum()}.") #print shape and the number of missing data
 
-plt.figure()
-plt.semilogy(range(len(iter_loss)), iter_loss, "--r")
-utils.save_or_show_plot("iter_loss.png", save_plots)
+    targ_cols = ("NDX",)#define a label
 
-plt.figure()
-plt.semilogy(range(len(epoch_loss)), epoch_loss, "--r")
-utils.save_or_show_plot("epoch_loss.png", save_plots)
+    #Data Preprocessing
+    data, scaler = preprocess_data(raw_data, targ_cols)
+    #got a tuple of (features = ndarray, labels = ndarray), parameters of the scikit standard scaler
+    #so data = (features = ndarray, labels = ndarray)
 
-plt.figure()
-plt.plot(final_y_predictions, label='Predicted',markerfacecolor='blue')
-plt.plot(data.targs[config.train_size:], label="True",markerfacecolor='green')
-plt.legend(loc='upper left')
-utils.save_or_show_plot("final_predicted.png", save_plots)
+    da_rnn_kwargs = {"batch_size": 128, "T": 10} #we can pass any number of arguments here because we will be using **da_rnn_kwargs
+    #create a dictionary for batch_size and time-steps in a sequence I suppose
 
-with open(os.path.join("data", "da_rnn_kwargs.json"), "w") as fi:
-    json.dump(da_rnn_kwargs, fi, indent=4)
+    config, da_rnn_model = da_rnn(data, n_targs=len(targ_cols), learning_rate=0.001, **da_rnn_kwargs)
 
-joblib.dump(scaler, os.path.join("data", "scaler.pkl"))
-torch.save(da_rnn_model.encoder.state_dict(), os.path.join("data", "encoder.torch"))
-torch.save(da_rnn_model.decoder.state_dict(), os.path.join("data", "decoder.torch"))
+
+    iter_loss, epoch_loss = train(da_rnn_model, data, config, n_epochs=100, save_plots=save_plots)
+
+    final_y_predictions = predict(da_rnn_model, data, config.train_size, config.batch_size, config.T)
+
+    plt.figure()
+    plt.semilogy(range(len(iter_loss)), iter_loss, "--r")
+    utils.save_or_show_plot("iter_loss.png", save_plots)
+
+    plt.figure()
+    plt.semilogy(range(len(epoch_loss)), epoch_loss, "--r")
+    utils.save_or_show_plot("epoch_loss.png", save_plots)
+
+    plt.figure()
+    plt.plot(final_y_predictions, label='Predicted',markerfacecolor='blue')
+    plt.plot(data.targs[config.train_size:], label="True",markerfacecolor='green')
+    plt.legend(loc='upper left')
+    utils.save_or_show_plot("final_predicted.png", save_plots)
+
+    with open(os.path.join("data", "da_rnn_kwargs.json"), "w") as fi:
+        json.dump(da_rnn_kwargs, fi, indent=4)
+
+    joblib.dump(scaler, os.path.join("data", "scaler.pkl"))
+    torch.save(da_rnn_model.encoder.state_dict(), os.path.join("data", "encoder.torch"))
+    torch.save(da_rnn_model.decoder.state_dict(), os.path.join("data", "decoder.torch"))
 
 #*args and **kwargs allow you to pass a variable number of arguments to a function.
