@@ -250,7 +250,7 @@ raw_data = pd.read_csv(os.path.join("data", "nasdaq100_padding.csv"), nrows=100 
 
 logger.info(f"Shape of data: {raw_data.shape}.\nTotal Missing Data Count: {raw_data.isnull().sum().sum()}.") #print shape and the number of missing data
 
-targ_cols = ("NDX",)#define a label
+targ_cols = ("NDX",)#define a label from among the columns in the csv
 
 #Data Preprocessing
 data, scaler = preprocess_data(raw_data, targ_cols)
@@ -262,12 +262,16 @@ da_rnn_kwargs = {"batch_size": 128, "T": 10} #we can pass any number of argument
 
 config, da_rnn_model = da_rnn(data, n_targs=len(targ_cols), learning_rate=0.001, **da_rnn_kwargs)
 
+#train
+iter_loss, epoch_loss = train(da_rnn_model, data, config, n_epochs=100, save_plots=save_plots)#----------this
+#returns training_configuration, da_rnn_net
 
-iter_loss, epoch_loss = train(da_rnn_model, data, config, n_epochs=100, save_plots=save_plots)
-final_y_predictions = predict(da_rnn_model, data, config.train_size, config.batch_size, config.T)
+
+#predict
+final_y_predictions = predict(da_rnn_model, data, config.train_size, config.batch_size, config.T)#----------this
 
 plt.figure()
-plt.semilogy(range(len(iter_loss)), iter_loss, "--r")
+plt.semilogy(range(len(iter_loss)), iter_loss, "--r") #semilogy --> Make a plot with log scaling on the y axis.
 utils.save_or_show_plot("iter_loss.png", save_plots)
 
 plt.figure()
