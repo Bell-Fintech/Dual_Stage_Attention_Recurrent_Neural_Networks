@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os, csv, time
 import multiprocessing as mp
 
@@ -12,7 +13,7 @@ def generate_timestep_csv(sublist_of_csv_files):
 
 
     # create a list of floats to put the mean CPU usage values for each timestep
-    mean_cpu_usage_list = [0] * 200000  # max end time for last file is 2.506200e+12 convert to seconds from microseconds first
+    mean_cpu_usage_list = [0] * 3000000  # max end time for last file is 2.506200e+12 convert to seconds from microseconds first
 
     # read them one by one
     for csv_file in sublist_of_csv_files:
@@ -20,7 +21,7 @@ def generate_timestep_csv(sublist_of_csv_files):
         # see which csv file we are working currently
         print("CSV Table is: ", str(csv_file), "\n")
 
-        with open("data/csv_files/" + str(csv_file), "r") as table:
+        with open("../clusterdata-2011-1/task_usage/" + str(csv_file), "r") as table:
 
             # read using datareader
             datareader = csv.reader(table)
@@ -39,7 +40,9 @@ def generate_timestep_csv(sublist_of_csv_files):
 
                     #print("Timestep is ",actual_timestep_to_use)  # row[0] + timestep gives the starting time step for this particular task
                     #
-                    # print("Initial CPU usage was: ", mean_cpu_usage_list[actual_timestep_to_use])
+               
+
+     # print("Initial CPU usage was: ", mean_cpu_usage_list[actual_timestep_to_use])
 
                     mean_cpu_usage_list[int(actual_timestep_to_use)] += float(row[5])
 
@@ -54,6 +57,7 @@ def generate_timestep_csv(sublist_of_csv_files):
 
 if __name__=="__main__":
 
+        
     start_time = time.time()
 
     pool_size = mp.cpu_count()
@@ -65,7 +69,7 @@ if __name__=="__main__":
     print("Total CPUs available for multiprocessing: ",mp.cpu_count())
 
     #sort the list of csv files for sequential processing
-    list_of_csv_files = os.listdir("data/csv_files/")
+    list_of_csv_files = os.listdir("../clusterdata-2011-1/task_usage/")
 
     list_of_csv_files.sort()
 
@@ -84,21 +88,15 @@ if __name__=="__main__":
 
     print("Completed calculating mean cpu usage. Now writing to csv.")
 
-    with open("zero_to_hundred_mean_cpu_usage.csv", "w") as f:
-        writer = csv.writer(f)
-        writer.writerows(result)
+    with open("mean_cpu_usage.csv", "w") as f:
+        writer = csv.writer(f, delimiter=",")
+        numpy_array_total = np.array(result)
+        writer.writerows(numpy_array_total)
 
     #check the dimensionality of this csv after you are done.
 
 
 
     print("Completed! Total time taken: ",time.time()-start_time)
-
-
-
-
-
-
-
 
 
