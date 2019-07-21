@@ -7,11 +7,30 @@ import multiprocessing as mp
 os.system('taskset -p %s' %os.getpid()) #If the CPU affinity is returned as f, of ff, you can access multiple cores. In my case it would start like that,
                                         # but upon importing numpy or scipy.any_module, it would switch to 1
 
+def calculate_max_timestep(sublist_of_csv_files):
+
+    max = 0
+
+    for csv_file in sublist_of_csv_files:
+        print("Currently working on calculating max end time step of table: ",csv_file)
+        table = pd.read_csv("../clusterdata-2011-1/task_usage/" + csv_file, header=None, index_col=None)
+
+        maximum_of_all_columns = table.max()
+        max_timestep = maximum_of_all_columns[1]
+
+        if max_timestep > max:
+            print("Maximum timestep changed from ", max, " to ", max_timestep)
+            max = max_timestep
+
+    return max
+
 
 
 def generate_timestep_csv(sublist_of_csv_files):
 
-
+    print("sublist of csv files is: ",str(sublist_of_csv_files))
+    print(sublist_of_csv_files[0])
+    #time.sleep(1111)
     # create a list of floats to put the mean CPU usage values for each timestep
     mean_cpu_usage_list = [0] * 3000000  # max end time for last file is 2.506200e+12 convert to seconds from microseconds first
 
@@ -48,7 +67,8 @@ def generate_timestep_csv(sublist_of_csv_files):
 
                     # print("New cpu usage is ", mean_cpu_usage_list[actual_timestep_to_use])
 
-            # print("Mean CPU Usage List: ", mean_cpu_usage_list)
+   
+                # print("Mean CPU Usage List: ", mean_cpu_usage_list)
     return mean_cpu_usage_list
     #df = pd.DataFrame(mean_cpu_usage_list)
 
@@ -69,29 +89,39 @@ if __name__=="__main__":
     print("Total CPUs available for multiprocessing: ",mp.cpu_count())
 
     #sort the list of csv files for sequential processing
-    list_of_csv_files = os.listdir("../clusterdata-2011-1/task_usage/")
+    list_of_csv_files = os.listdir("data/csv_files/")
 
     list_of_csv_files.sort()
+    # print(list_of_csv_files)
 
-    print("The last csv file in this batch is: ",list_of_csv_files[-1])
+    print("The last csv file is: ",list_of_csv_files[-1])
+
     #for my laptop
     #list_of_csv_files = [list_of_csv_files[i:i+ 3] for i in range(0, len(list_of_csv_files), 3)]#generating a list with 12 elements for 12 CPUs
     #for star server
-    list_of_csv_files = [list_of_csv_files[i:i+ 16] for i in range(0, len(list_of_csv_files), 16)]#generating a list with 12 elements for 12 CPUs
-
-    print("The no of processes created for multi-processing is: ",len(list_of_csv_files))#--> 12
+    list_of_sublist_csv_files = [list_of_csv_files[i:i+ 16] for i in range(0, len(list_of_csv_files), 16)]#generating a list with 12 elements for 12 CPUs
 
 
-    result = pool.map(generate_timestep_csv, list_of_csv_files)
+    pool_for_max_timestep_calculation = mp.Pool(pool_size)
+    max_result = pool_for_max_timestep_calculation.map(calculate_max_timestep, list_of_sublist_csv_files)
 
-    print("Total number of elements in result: ",len(result))
+    print("The maximum end timestep should be: ",max(max_result))
 
-    print("Completed calculating mean cpu usage. Now writing to csv.")
+    print("The no of processes created for multi-processing is: ",len(list_of_sublist_csv_files))#--> 32
 
-    with open("mean_cpu_usage.csv", "w") as f:
-        writer = csv.writer(f, delimiter=",")
-        numpy_array_total = np.array(result)
-        writer.writerows(numpy_array_total)
+
+    result = pool.map(generate_timestep_csv, list_of_sublist_csv_files)
+
+    print("Total number of elements in result: ",len(result))#------------should be equal to the number of processors used for multiprocessing
+
+    print("Completed calculating mean cpu usage for differnet CPUs. Now writing to csv.")
+
+    for process in range(len(result)):
+
+        with open("mean_cpu_usage_process_"+str(process)+".csv", "w") as f:
+
+            writer = csv.writer(f, delimiter=",")
+            writer.writerow(result[process])
 
     #check the dimensionality of this csv after you are done.
 
